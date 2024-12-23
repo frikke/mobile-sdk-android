@@ -7,13 +7,12 @@ import com.crowdin.platform.realtimeupdate.RealTimeUpdateManager
 import com.crowdin.platform.transformer.ViewTransformerManager
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
+import org.mockito.Mockito.`when`
 
 class RealTimeUpdateManagerTest {
-
     private lateinit var mockDataManager: DataManager
     private lateinit var mockViewTransformer: ViewTransformerManager
 
@@ -47,7 +46,7 @@ class RealTimeUpdateManagerTest {
         // Then
         verify(mockDataManager).getData<DistributionInfoResponse.DistributionData>(
             "distribution_data",
-            DistributionInfoResponse.DistributionData::class.java
+            DistributionInfoResponse.DistributionData::class.java,
         )
         verifyNoInteractions(mockViewTransformer)
     }
@@ -61,8 +60,8 @@ class RealTimeUpdateManagerTest {
         `when`(
             mockDataManager.getData<DistributionInfoResponse.DistributionData>(
                 any(),
-                any()
-            )
+                any(),
+            ),
         ).thenReturn(distributionData)
         `when`(mockDataManager.getMapping("EN")).thenReturn(LanguageData())
 
@@ -90,6 +89,6 @@ class RealTimeUpdateManagerTest {
         DistributionInfoResponse.DistributionData(
             DistributionInfoResponse.DistributionData.ProjectData("projectIdTest", "testWsHash"),
             DistributionInfoResponse.DistributionData.UserData("userIdTest"),
-            "wss://ws-test"
+            "wss://ws-test",
         )
 }

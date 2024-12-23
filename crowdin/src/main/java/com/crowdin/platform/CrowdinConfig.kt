@@ -1,15 +1,14 @@
 package com.crowdin.platform
 
 import android.util.Log
+import com.crowdin.platform.data.model.ApiAuthConfig
 import com.crowdin.platform.data.model.AuthConfig
 import com.crowdin.platform.data.remote.NetworkType
-import com.crowdin.platform.recurringwork.RecurringManager
 
 /**
  * Contains configuration properties for initializing Crowdin.
  */
 class CrowdinConfig private constructor() {
-
     var isPersist: Boolean = true
     var distributionHash: String = ""
     var networkType: NetworkType = NetworkType.ALL
@@ -18,9 +17,11 @@ class CrowdinConfig private constructor() {
     var updateInterval: Long = -1
     var sourceLanguage: String = ""
     var authConfig: AuthConfig? = null
+    var apiAuthConfig: ApiAuthConfig? = null
+    var isInitSyncEnabled: Boolean = true
+    var organizationName: String? = null
 
     class Builder {
-
         private var isPersist: Boolean = true
         private var distributionHash: String = ""
         private var networkType: NetworkType = NetworkType.ALL
@@ -29,6 +30,9 @@ class CrowdinConfig private constructor() {
         private var updateInterval: Long = -1
         private var sourceLanguage: String = ""
         private var authConfig: AuthConfig? = null
+        private var apiAuthConfig: ApiAuthConfig? = null
+        private var isInitSyncEnabled: Boolean = true
+        private var organizationName: String? = null
 
         fun persist(isPersist: Boolean): Builder {
             this.isPersist = isPersist
@@ -67,6 +71,25 @@ class CrowdinConfig private constructor() {
 
         fun withAuthConfig(authConfig: AuthConfig): Builder {
             this.authConfig = authConfig
+            // Required for backward compatibility
+            authConfig.organizationName?.let {
+                this.organizationName = it
+            }
+            return this
+        }
+
+        fun withApiAuthConfig(apiAuthConfig: ApiAuthConfig): Builder {
+            this.apiAuthConfig = apiAuthConfig
+            return this
+        }
+
+        fun withInitSyncDisabled(): Builder {
+            this.isInitSyncEnabled = false
+            return this
+        }
+
+        fun withOrganizationName(organizationName: String): Builder {
+            this.organizationName = organizationName
             return this
         }
 
@@ -77,6 +100,15 @@ class CrowdinConfig private constructor() {
 
             config.distributionHash = distributionHash
 
+            if (distributionHash.startsWith(ORGANIZATION_PREFIX) && organizationName.isNullOrEmpty()) {
+                Log.w(
+                    Crowdin.CROWDIN_TAG,
+                    "Crowdin: the `organizationName` cannot be empty for Crowdin Enterprise. Add it to the `CrowdingConfig` " +
+                        "using the `.withOrganizationName(...)` method",
+                )
+            }
+
+            config.organizationName = organizationName
             config.networkType = networkType
             config.isRealTimeUpdateEnabled = isRealTimeUpdateEnabled
             config.isScreenshotEnabled = isScreenshotEnabled
@@ -87,12 +119,12 @@ class CrowdinConfig private constructor() {
                 }
             }
 
-            if ((updateInterval != -1L) and (updateInterval < RecurringManager.MIN_PERIODIC_INTERVAL_MILLIS)) {
+            if (updateInterval < MIN_PERIODIC_INTERVAL_MILLIS) {
                 Log.w(
                     Crowdin.CROWDIN_TAG,
-                    "`updateInterval` must be not less than 15 minutes. Will be used default value - 15 minutes"
+                    "`updateInterval` must be not less than 15 minutes. Will be used default value - 15 minutes",
                 )
-                config.updateInterval = RecurringManager.MIN_PERIODIC_INTERVAL_MILLIS
+                config.updateInterval = MIN_PERIODIC_INTERVAL_MILLIS
             } else {
                 config.updateInterval = updateInterval
             }
@@ -105,8 +137,15 @@ class CrowdinConfig private constructor() {
                 }
             }
             config.authConfig = authConfig
+            config.apiAuthConfig = apiAuthConfig
+            config.isInitSyncEnabled = isInitSyncEnabled
 
             return config
+        }
+
+        companion object {
+            private const val ORGANIZATION_PREFIX = "e-"
+            private const val MIN_PERIODIC_INTERVAL_MILLIS = 15 * 60 * 1000L // 15 minutes.
         }
     }
 }

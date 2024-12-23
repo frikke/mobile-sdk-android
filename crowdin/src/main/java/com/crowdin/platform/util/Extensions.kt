@@ -17,8 +17,13 @@ import java.util.TimeZone
 
 const val NEW_LINE = "<br>"
 private const val DEFAULT_DATE_TIME_FORMAT = "yyyy_MM_dd-HH_mm_ss"
+private val crowdinCodeMapping = mapOf("iw" to "he", "in" to "id")
 
-fun MenuInflater.inflateWithCrowdin(@MenuRes menuRes: Int, menu: Menu, resources: Resources) {
+fun MenuInflater.inflateWithCrowdin(
+    @MenuRes menuRes: Int,
+    menu: Menu,
+    resources: Resources,
+) {
     this.inflate(menuRes, menu)
     Crowdin.updateMenuItemsText(menuRes, menu, resources)
 }
@@ -30,7 +35,7 @@ fun Long.parseToDateTimeFormat(): String {
     return monthDate.format(cal.time)
 }
 
-fun Locale.getFormattedCode(): String = "$language-$country"
+fun Locale.getFormattedCode(): String = "${language.withCrowdinSupportedCheck()}-$country"
 
 fun String.getLocaleForLanguageCode(): Locale {
     var code = Locale.getDefault().language
@@ -54,8 +59,12 @@ fun executeIO(function: () -> Unit) {
     }
 }
 
-fun getMatchedCode(list: List<String>?, customLanguages: Map<String, CustomLanguage>?): String? {
-    val code = "${Locale.getDefault().language}-${Locale.getDefault().country}"
+fun getMatchedCode(
+    list: List<String>?,
+    customLanguages: Map<String, CustomLanguage>?,
+): String? {
+    val languageCode = Locale.getDefault().language.withCrowdinSupportedCheck()
+    val code = "$languageCode-${Locale.getDefault().country}"
 
     if (customLanguages != null) {
         for (languageData in customLanguages) {
@@ -66,17 +75,18 @@ fun getMatchedCode(list: List<String>?, customLanguages: Map<String, CustomLangu
     }
 
     if (list?.contains(code) == false) {
-        val languageCode = Locale.getDefault().language
         return languageCode.takeIf { list.contains(languageCode) }
     }
     return code
 }
 
-fun String.unEscapeQuotes(): String {
-    return this.replace("\\\"", "\"")
+fun String.withCrowdinSupportedCheck(): String = crowdinCodeMapping[this] ?: this
+
+fun String.unEscapeQuotes(): String =
+    this
+        .replace("\\\"", "\"")
         .replace("\\\'", "\'")
         .replace("\\n", NEW_LINE)
-}
 
 fun String.fromHtml(): CharSequence? =
     try {

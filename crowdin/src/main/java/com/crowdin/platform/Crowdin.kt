@@ -13,6 +13,7 @@ import com.crowdin.platform.data.DistributionInfoCallback
 import com.crowdin.platform.data.LanguageDataCallback
 import com.crowdin.platform.data.TextMetaDataProvider
 import com.crowdin.platform.data.local.LocalStringRepositoryFactory
+import com.crowdin.platform.data.model.ApiAuthConfig
 import com.crowdin.platform.data.model.AuthConfig
 import com.crowdin.platform.data.model.AuthInfo
 import com.crowdin.platform.data.model.LanguageData
@@ -29,7 +30,6 @@ import com.crowdin.platform.data.remote.TranslationDataRepository
 import com.crowdin.platform.data.remote.TranslationDownloadCallback
 import com.crowdin.platform.data.remote.api.CrowdinApi
 import com.crowdin.platform.realtimeupdate.RealTimeUpdateManager
-import com.crowdin.platform.recurringwork.RecurringManager
 import com.crowdin.platform.screenshot.ScreenshotCallback
 import com.crowdin.platform.screenshot.ScreenshotManager
 import com.crowdin.platform.screenshot.ScreenshotUtils
@@ -44,15 +44,14 @@ import com.crowdin.platform.util.FeatureFlags
 import com.crowdin.platform.util.TextUtils
 import com.crowdin.platform.util.ThreadUtils
 import com.crowdin.platform.util.UiUtil
-import com.crowdin.platform.util.getFormattedCode
-import java.util.Locale
+import com.crowdin.platform.util.parseToDateTimeFormat
 
 /**
  * Entry point for Crowdin. it will be used for setting new strings, wrapping activity context.
  */
 object Crowdin {
-
     const val CROWDIN_TAG = "CrowdinSDK"
+
     private lateinit var viewTransformerManager: ViewTransformerManager
     private lateinit var config: CrowdinConfig
     private lateinit var crowdinPreferences: Preferences
@@ -70,7 +69,10 @@ object Crowdin {
      * @param config of the Crowdin.
      */
     @JvmStatic
-    fun init(context: Context, config: CrowdinConfig) {
+    fun init(
+        context: Context,
+        config: CrowdinConfig,
+    ) {
         this.config = config
         FeatureFlags.registerConfig(config)
         initPreferences(context)
@@ -79,20 +81,21 @@ object Crowdin {
         initFeatureManagers()
         initTranslationDataManager()
         initRealTimeUpdates()
-        initPeriodicUpdates(context)
+        initLoading(context)
         loadMapping()
+
+        initDistributionInfo()
     }
 
-    private fun initPeriodicUpdates(context: Context) {
-        when {
-            config.updateInterval >= RecurringManager.MIN_PERIODIC_INTERVAL_MILLIS ->
-                RecurringManager.setPeriodicUpdates(context, config)
-            else -> {
-                RecurringManager.cancel(context)
-                if (!FeatureFlags.isRealTimeUpdateEnabled) {
-                    forceUpdate(context)
-                }
-            }
+    private fun initLoading(context: Context) {
+        val lastUpdate = crowdinPreferences.getLastUpdate()
+        val timeDiff = System.currentTimeMillis() - lastUpdate
+        if (lastUpdate != 0L && timeDiff < config.updateInterval) {
+            return
+        }
+
+        if (config.isInitSyncEnabled && !FeatureFlags.isRealTimeUpdateEnabled) {
+            forceUpdate(context)
         }
     }
 
@@ -100,12 +103,6 @@ object Crowdin {
         if (config.isRealTimeUpdateEnabled && isAuthorized()) {
             createRealTimeConnection()
         }
-    }
-
-    internal fun initForUpdate(context: Context) {
-        this.config = RecurringManager.getConfig(context)
-        initStringDataManager(context, config)
-        forceUpdate(context)
     }
 
     /**
@@ -119,7 +116,12 @@ object Crowdin {
         if (dataManager == null) {
             base
         } else {
-            CrowdinContextWrapper.wrap(base, dataManager, viewTransformerManager)
+            try {
+                CrowdinContextWrapper.wrap(base, dataManager, viewTransformerManager)
+            } catch (ex: Exception) {
+                Log.d(CROWDIN_TAG, "Couldn't wrap context without first calling `Crowdin.init`")
+                base
+            }
         }
 
     /**
@@ -140,83 +142,12 @@ object Crowdin {
      * @param value the string value.
      */
     @JvmStatic
-    fun setString(language: String, key: String, value: String) {
+    fun setString(
+        language: String,
+        key: String,
+        value: String,
+    ) {
         dataManager?.setString(language, key, value)
-    }
-
-    /**
-     * Get a single string for a language.
-     *
-     * @param language language code. For example en, en-GB, en-US etc.
-     *                  https://support.crowdin.com/api/language-codes/
-     * @param key the string key.
-     * @return resource or empty string.
-     */
-    @JvmStatic
-    fun getString(language: String, key: String): String {
-        return dataManager?.getString(language, key) ?: ""
-    }
-
-    /**
-     * Get a json string for a default language data. Including strings/arrays/plurals.
-     * It will use device default locale language code.
-     *
-     * @return json or empty string. Example:
-     *
-     *  {
-     *      "language":"de",
-     *      "strings":{
-     *          "stringKey0":"Text0",
-     *          "stringKey1":"Text1"
-     *      },
-     *      "arrays":{
-     *          "arrayKey0":[
-     *              "Monday",
-     *              "Wednesday"
-     *          ]
-     *      },
-     *      "plurals":{
-     *          "pluralsKey":{
-     *              "one":"Text0",
-     *              "other":"Text1"
-     *          }
-     *      }
-     *  }
-     */
-    @JvmStatic
-    fun getResources(): String =
-        dataManager?.getLanguageData(Locale.getDefault().getFormattedCode()).toString()
-
-    /**
-     * Get asynchronously a json string for a language data. Including strings/arrays/plurals.
-     *
-     * @param languageCode language code. For example en, en-GB, en-US etc.
-     *                  https://support.crowdin.com/api/language-codes/
-     * @param callback invoked when data received.
-     *
-     *  {
-     *      "language":"de",
-     *      "strings":{
-     *          "stringKey0":"Text0",
-     *          "stringKey1":"Text1"
-     *      },
-     *      "arrays":{
-     *          "arrayKey0":[
-     *              "Monday",
-     *              "Wednesday"
-     *          ]
-     *      },
-     *      "plurals":{
-     *          "pluralsKey":{
-     *              "one":"Text0",
-     *              "other":"Text1"
-     *          }
-     *      }
-     *  }
-     */
-    @JvmStatic
-    fun getResourcesByLocale(languageCode: String, callback: ResourcesCallback) {
-        dataManager?.getResourcesByLocale(languageCode, callback) ?: callback.onDataReceived("")
     }
 
     /**
@@ -227,7 +158,11 @@ object Crowdin {
      * @param resources class for accessing an application's resources.
      */
     @JvmStatic
-    fun updateMenuItemsText(@MenuRes menuRes: Int, menu: Menu, resources: Resources) {
+    fun updateMenuItemsText(
+        @MenuRes menuRes: Int,
+        menu: Menu,
+        resources: Resources,
+    ) {
         TextUtils.updateMenuItemsText(menuRes, menu, resources)
     }
 
@@ -235,7 +170,10 @@ object Crowdin {
      * Initialize force update from the network.
      */
     @JvmStatic
-    fun forceUpdate(context: Context, onFinished: (() -> Unit)? = null) {
+    fun forceUpdate(
+        context: Context,
+        onFinished: (() -> Unit)? = null,
+    ) {
         Log.v(CROWDIN_TAG, "Force update started")
         dataManager?.updateData(context, config.networkType, onFinished)
     }
@@ -249,43 +187,65 @@ object Crowdin {
     }
 
     /**
-     * Send screenshot of current screen to the crowdin platform.
-     * Will attach tags (keys and position) related to UI components from the screen.
+     * Sends a screenshot of the current screen to the Crowdin platform.
+     * The screenshot will include tags with keys and positions related to UI components on the screen.
+     *
+     * If a screenshot with the same name already exists, it will be updated. Otherwise, a new screenshot
+     * entry will be created on the platform.
      *
      * @param activity required for accessing current window.
-     * @param screenshotCallback optional, will provide status of screenshot creating process.
+     * @param screenshotName Optional name to identify the screenshot on the platform. If a screenshot with
+     *                       this name already exists, it will be updated. This name should not include any file extensions.
+     * @param screenshotCallback Optional callback that provides the status of the screenshot upload process,
+     *                           including success or failure details.
      */
     @JvmStatic
     @JvmOverloads
-    fun sendScreenshot(activity: Activity, screenshotCallback: ScreenshotCallback? = null) {
+    fun sendScreenshot(
+        activity: Activity,
+        screenshotName: String? = null,
+        screenshotCallback: ScreenshotCallback? = null,
+    ) {
         screenshotManager?.let {
             val view = activity.window.decorView.rootView
+            val name = screenshotName ?: (activity.localClassName + "-" + System.currentTimeMillis().parseToDateTimeFormat())
             ScreenshotUtils.getBitmapFromView(view, activity) { bitmap ->
                 it.setScreenshotCallback(screenshotCallback)
                 it.sendScreenshot(
                     bitmap,
                     viewTransformerManager.getViewData(),
-                    activity.localClassName
+                    name,
                 )
             }
         }
     }
 
     /**
-     * Send screenshot of current screen to the crowdin platform.
-     * Will attach tags (keys and position) related to UI components from the screen.
+     * Sends a screenshot of the current screen to the Crowdin platform.
+     * The screenshot will include tags with keys and positions related to UI components on the screen.
      *
-     * @param bitmap screenshot.
-     * @param screenshotCallback optional, will provide status of screenshot creating process.
+     * If a screenshot with the same name already exists, it will be updated. Otherwise, a new screenshot
+     * entry will be created on the platform.
+     *
+     * @param bitmap The screenshot image as a `Bitmap`.
+     * @param screenshotName Optional name to identify the screenshot on the platform. If a screenshot with
+     *                       this name already exists, it will be updated. This name should not include any file extensions.
+     * @param screenshotCallback Optional callback that provides the status of the screenshot upload process,
+     *                           including success or failure details.
      */
     @JvmStatic
     @JvmOverloads
-    fun sendScreenshot(bitmap: Bitmap, screenshotCallback: ScreenshotCallback? = null) {
+    fun sendScreenshot(
+        bitmap: Bitmap,
+        screenshotName: String? = null,
+        screenshotCallback: ScreenshotCallback? = null,
+    ) {
         screenshotManager?.let {
             it.setScreenshotCallback(screenshotCallback)
             it.sendScreenshot(
-                bitmap,
-                viewTransformerManager.getViewData()
+                bitmap = bitmap,
+                viewDataList = viewTransformerManager.getViewData(),
+                name = screenshotName,
             )
         }
     }
@@ -331,20 +291,13 @@ object Crowdin {
     }
 
     /**
-     * Cancel recurring job defined by interval during sdk init.
-     *
-     * @param context context of an activity.
-     */
-    @JvmStatic
-    fun cancelRecurring(context: Context) {
-        RecurringManager.cancel(context)
-    }
-
-    /**
      * Auth to Crowdin platform. Create connection for realtime updates if feature turned on.
      */
     @JvmStatic
-    fun authorize(context: Context, onErrorAction: ((str: String) -> Unit)? = null) {
+    fun authorize(
+        context: Context,
+        onErrorAction: ((str: String) -> Unit)? = null,
+    ) {
         Log.d(CROWDIN_TAG, "Authorize started")
 
         if (isAuthorized()) {
@@ -446,15 +399,16 @@ object Crowdin {
     fun downloadTranslation(callback: TranslationDownloadCallback? = null) {
         if (FeatureFlags.isRealTimeUpdateEnabled && dataManager?.isAuthorized() == true) {
             translationDataRepository?.fetchData(
-                languageDataCallback = object : LanguageDataCallback {
-                    override fun onDataLoaded(languageData: LanguageData) {
-                        callback?.onSuccess()
-                    }
+                languageDataCallback =
+                    object : LanguageDataCallback {
+                        override fun onDataLoaded(languageData: LanguageData) {
+                            callback?.onSuccess()
+                        }
 
-                    override fun onFailure(throwable: Throwable) {
-                        callback?.onFailure(throwable)
-                    }
-                }
+                        override fun onFailure(throwable: Throwable) {
+                            callback?.onFailure(throwable)
+                        }
+                    },
             )
         } else {
             val error =
@@ -473,27 +427,30 @@ object Crowdin {
 
     private fun initFeatureManagers() {
         if (FeatureFlags.isRealTimeUpdateEnabled || FeatureFlags.isScreenshotEnabled) {
-            distributionInfoManager = DistributionInfoManager(
-                getCrowdinApi(),
-                dataManager!!,
-                config.distributionHash
-            )
+            distributionInfoManager =
+                DistributionInfoManager(
+                    getCrowdinApi(),
+                    dataManager!!,
+                    config.distributionHash,
+                )
         }
 
         if (FeatureFlags.isRealTimeUpdateEnabled) {
-            realTimeUpdateManager = RealTimeUpdateManager(
-                config.sourceLanguage,
-                dataManager,
-                viewTransformerManager
-            )
+            realTimeUpdateManager =
+                RealTimeUpdateManager(
+                    config.sourceLanguage,
+                    dataManager,
+                    viewTransformerManager,
+                )
         }
 
         if (FeatureFlags.isScreenshotEnabled) {
-            screenshotManager = ScreenshotManager(
-                getCrowdinApi(),
-                dataManager!!,
-                config.sourceLanguage
-            )
+            screenshotManager =
+                ScreenshotManager(
+                    getCrowdinApi(),
+                    dataManager!!,
+                    config.sourceLanguage,
+                )
         }
     }
 
@@ -501,11 +458,16 @@ object Crowdin {
         crowdinPreferences = CrowdinPreferences(context)
     }
 
-    private fun initStringDataManager(context: Context, config: CrowdinConfig) {
-        val remoteRepository = StringDataRemoteRepository(
-            CrowdinRetrofitService.getCrowdinDistributionApi(),
-            config.distributionHash
-        )
+    private fun initStringDataManager(
+        context: Context,
+        config: CrowdinConfig,
+    ) {
+        val remoteRepository =
+            StringDataRemoteRepository(
+                crowdinPreferences,
+                CrowdinRetrofitService.getCrowdinDistributionApi(),
+                config.distributionHash,
+            )
         val localRepository = LocalStringRepositoryFactory.createLocalRepository(context, config)
 
         dataManager =
@@ -519,7 +481,8 @@ object Crowdin {
                             viewTransformerManager.invalidate()
                         }
                     }
-                })
+                },
+            )
         remoteRepository.crowdinApi = getCrowdinApi()
     }
 
@@ -535,13 +498,14 @@ object Crowdin {
 
     private fun loadMapping() {
         if (FeatureFlags.isRealTimeUpdateEnabled || FeatureFlags.isScreenshotEnabled) {
-            val mappingRepository = MappingRepository(
-                CrowdinRetrofitService.getCrowdinDistributionApi(),
-                XmlReader(StringResourceParser()),
-                dataManager!!,
-                config.distributionHash,
-                config.sourceLanguage
-            )
+            val mappingRepository =
+                MappingRepository(
+                    CrowdinRetrofitService.getCrowdinDistributionApi(),
+                    XmlReader(StringResourceParser()),
+                    dataManager!!,
+                    config.distributionHash,
+                    config.sourceLanguage,
+                )
             mappingRepository.crowdinApi = getCrowdinApi()
             mappingRepository.fetchData()
         }
@@ -549,15 +513,20 @@ object Crowdin {
 
     internal fun getAuthConfig(): AuthConfig? = config.authConfig
 
+    internal fun getApiAuthConfig(): ApiAuthConfig? = config.apiAuthConfig
+
+    internal fun getOrganizationName(): String? = config.organizationName
+
     private fun initTranslationDataManager() {
         if (FeatureFlags.isRealTimeUpdateEnabled) {
-            translationDataRepository = TranslationDataRepository(
-                CrowdinRetrofitService.getCrowdinDistributionApi(),
-                CrowdinRetrofitService.getCrowdinTranslationApi(),
-                XmlReader(StringResourceParser()),
-                dataManager!!,
-                config.distributionHash
-            )
+            translationDataRepository =
+                TranslationDataRepository(
+                    CrowdinRetrofitService.getCrowdinDistributionApi(),
+                    CrowdinRetrofitService.getCrowdinTranslationApi(),
+                    XmlReader(StringResourceParser()),
+                    dataManager!!,
+                    config.distributionHash,
+                )
             translationDataRepository?.crowdinApi = getCrowdinApi()
             downloadTranslation()
         }
@@ -566,14 +535,28 @@ object Crowdin {
     private fun getCrowdinApi(): CrowdinApi =
         CrowdinRetrofitService.getCrowdinApi(
             dataManager!!,
-            config.authConfig?.organizationName
+            config.organizationName,
         )
 
-    fun getManifest(): ManifestData? {
-        return dataManager?.getManifest()
-    }
+    fun getManifest(): ManifestData? = dataManager?.getManifest()
 
-    fun getSupportedLanguages(): LanguagesInfo? {
-        return dataManager?.getSupportedLanguages()
+    fun getSupportedLanguages(): LanguagesInfo? = dataManager?.getSupportedLanguages()
+
+    private fun initDistributionInfo() {
+        if (config.apiAuthConfig?.apiToken == null) {
+            return
+        }
+
+        getDistributionInfo(
+            object : DistributionInfoCallback {
+                override fun onResponse() {
+                    Log.d(CROWDIN_TAG, "Distribution info loaded")
+                }
+
+                override fun onError(throwable: Throwable) {
+                    Log.e(CROWDIN_TAG, "Distribution info not loaded", throwable)
+                }
+            },
+        )
     }
 }

@@ -6,11 +6,10 @@ import com.google.android.material.navigation.NavigationView
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 
 class NavigationViewTransformerTest {
-
     @Test
     fun getMenuTest() {
         // Given

@@ -2,13 +2,12 @@ package com.crowdin.platform.data.remote.interceptor
 
 import android.os.Build
 import com.crowdin.platform.BuildConfig
-import java.io.IOException
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
+import java.io.IOException
 
 class HeaderInterceptor : Interceptor {
-
     private val userAgent =
         "crowdin-android-sdk/${BuildConfig.VERSION_NAME} android/${Build.VERSION.SDK_INT}"
 
@@ -20,9 +19,11 @@ class HeaderInterceptor : Interceptor {
     }
 
     private fun addHeadersToRequest(original: Request): Request {
-        val requestBuilder = original.newBuilder()
-            .header("User-Agent", userAgent)
-            .method(original.method, original.body)
+        val requestBuilder =
+            original
+                .newBuilder()
+                .header("User-Agent", userAgent)
+                .method(original.method, original.body)
 
         return requestBuilder.build()
     }

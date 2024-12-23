@@ -8,7 +8,6 @@ import com.crowdin.platform.util.unEscapeQuotes
 import org.xmlpull.v1.XmlPullParser
 
 internal class StringResourceParser : Parser {
-
     companion object {
         private const val TAG_STRING: String = "string"
         private const val TAG_STRING_ARRAY: String = "string-array"
@@ -71,7 +70,15 @@ internal class StringResourceParser : Parser {
                     (isPluralStarted && isItemStarted) ||
                     isStringStarted
                 ) {
-                    content += "<${parser.name}>"
+                    var innerTag = "<${parser.name}"
+                    if (parser.attributeCount > 0) {
+                        for (i in 0 until parser.attributeCount) {
+                            innerTag += " ${parser.getAttributeName(i)}=\"${parser.getAttributeValue(i)}\""
+                        }
+                    }
+                    innerTag += ">"
+
+                    content += innerTag
                     isInnerTagOpened = true
                 }
             }

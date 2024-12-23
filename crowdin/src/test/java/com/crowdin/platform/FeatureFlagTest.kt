@@ -4,11 +4,10 @@ import com.crowdin.platform.util.FeatureFlags
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.core.Is.`is`
 import org.junit.Test
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 
 class FeatureFlagTest {
-
     @Test
     fun whenSetRealtimeUpdatesEnabled_shouldPersistDuringSession() {
         // Given

@@ -15,14 +15,13 @@ import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import retrofit2.Call
 import retrofit2.Response
 
 class MappingRepositoryTest {
-
     private lateinit var mockDistributionApi: CrowdinDistributionApi
     private lateinit var mockCrowdinApi: CrowdinApi
     private lateinit var mockReader: Reader
@@ -66,7 +65,7 @@ class MappingRepositoryTest {
         mappingRepository.onManifestDataReceived(manifestData, mockCallback)
 
         // Then
-        verify(mockDistributionApi).getMappingFile(any(), any(), any())
+        verify(mockDistributionApi).getMappingFile(any(), any(), eq(manifestData.mapping.first()))
     }
 
     @Test
@@ -138,95 +137,6 @@ class MappingRepositoryTest {
     }
 
     @Test
-    fun validateFilePath_noPatternsTest() {
-        val mappingRepository = givenMappingRepository()
-        val givenLanguageInfo = givenLanguageInfo()
-        val givenPathWithoutSlash = "strings.xml"
-        val givenPathWithSlash = "/strings.xml"
-        val givenFormattedCode = "it"
-        val expectedPath = "/it/strings.xml"
-
-        assertThat(
-            mappingRepository.validateFilePath(
-                givenPathWithoutSlash,
-                givenLanguageInfo,
-                givenFormattedCode
-            ),
-            equalTo(expectedPath)
-        )
-        assertThat(
-            mappingRepository.validateFilePath(
-                givenPathWithSlash,
-                givenLanguageInfo,
-                givenFormattedCode
-            ),
-            equalTo(expectedPath)
-        )
-    }
-
-    @Test
-    fun validateFilePath_exportPatternsTest() {
-        val mappingRepository = givenMappingRepository()
-        val givenLanguageInfo = givenLanguageInfo()
-        val givenFormattedCode = "it"
-
-        // language name
-        assertThat(
-            mappingRepository.validateFilePath(
-                "/test/test/%language%/strings.xml",
-                givenLanguageInfo,
-                givenFormattedCode
-            ),
-            equalTo("/test/test/English/strings.xml")
-        )
-        // two letters
-        assertThat(
-            mappingRepository.validateFilePath(
-                "/test/test/%two_letters_code%/strings.xml",
-                givenLanguageInfo,
-                givenFormattedCode
-            ),
-            equalTo("/test/test/en/strings.xml")
-        )
-        // three letters
-        assertThat(
-            mappingRepository.validateFilePath(
-                "/test/test/%three_letters_code%/strings.xml",
-                givenLanguageInfo,
-                givenFormattedCode
-            ),
-            equalTo("/test/test/eng/strings.xml")
-        )
-        // locale
-        assertThat(
-            mappingRepository.validateFilePath(
-                "/test/test/%locale%/strings.xml",
-                givenLanguageInfo,
-                givenFormattedCode
-            ),
-            equalTo("/test/test/en-US/strings.xml")
-        )
-        // locale with underscore
-        assertThat(
-            mappingRepository.validateFilePath(
-                "/test/test/%locale_with_underscore%/strings.xml",
-                givenLanguageInfo,
-                givenFormattedCode
-            ),
-            equalTo("/test/test/en_US/strings.xml")
-        )
-        // android code
-        assertThat(
-            mappingRepository.validateFilePath(
-                "/test/test/values-%android_code%/strings.xml",
-                givenLanguageInfo,
-                givenFormattedCode
-            ),
-            equalTo("/test/test/values-en-rUS/strings.xml")
-        )
-    }
-
-    @Test
     fun getLanguageInfoTest() {
         // Given
         val mappingRepository = givenMappingRepository()
@@ -253,146 +163,53 @@ class MappingRepositoryTest {
         assertThat(actualLanguageInfo, equalTo(null))
     }
 
-    @Test
-    fun validateFilePath_languageMappingTest() {
-        // Given
-        val mappingRepository = givenMappingRepository()
-        val givenLanguageInfo = givenLanguageInfo()
-        val givenFilePathWithTwoLettersPattern = "/%two_letters_code%/strings.xml"
-        val givenFormattedCode = "uk"
-        val givenLanguageMapping = givenLanguageMapping()
-        val expectedPath = "/ua/strings.xml"
-
-        // When
-        val resultFilePath = mappingRepository.validateFilePath(
-            givenFilePathWithTwoLettersPattern,
-            givenLanguageInfo,
-            givenFormattedCode,
-            givenLanguageMapping
-        )
-
-        // Then Two letters pattern
-        assertThat(resultFilePath, equalTo(expectedPath))
-    }
-
-    @Test
-    fun validateFilePath_languageMappingTestWithMissingPattern() {
-        // Given
-        val mappingRepository = givenMappingRepository()
-        val givenLanguageInfo = givenLanguageInfo()
-        val expectedPath = "/ua/strings.xml"
-        val givenFilePathWithTwoLettersPattern = "/missing_code/strings.xml"
-        val givenFormattedCode = "uk"
-        val givenLanguageMapping = givenLanguageMapping()
-
-        // When
-        val resultFilePath = mappingRepository.validateFilePath(
-            givenFilePathWithTwoLettersPattern,
-            givenLanguageInfo,
-            givenFormattedCode,
-            givenLanguageMapping
-        )
-
-        // Then Two letters pattern
-        assertThat(resultFilePath, expectedPath.isNotEmpty())
-    }
-
-    @Test
-    fun validateFilePath_languageMappingTestWithManyPatterns() {
-        // Given
-        val mappingRepository = givenMappingRepository()
-        val givenLanguageInfo = givenLanguageInfo()
-        val expectedPath = "/values/ukrainian/ua/items/ukr/strings.xml"
-        val givenFilePathWithThreeLettersPattern =
-            "/values/%name%/%two_letters_code%/items/%three_letters_code%/strings.xml"
-        val givenFormattedCode = "uk"
-        val givenLanguageMapping = givenLanguageMapping()
-
-        // When
-        val resultFilePath = mappingRepository.validateFilePath(
-            givenFilePathWithThreeLettersPattern,
-            givenLanguageInfo,
-            givenFormattedCode,
-            givenLanguageMapping
-        )
-
-        // Then Three letters pattern
-        assertThat(resultFilePath, equalTo(expectedPath))
-    }
-
-    @Test
-    fun validateFilePath_languageMappingTestWithLanguagePattern() {
-        // Given
-        val mappingRepository = givenMappingRepository()
-        val givenLanguageInfo = givenLanguageInfo()
-        val expectedPath = "/values/ukrainian/strings.xml"
-        val givenFilePathWithThreeLettersPattern = "/values/%language%/strings.xml"
-        val givenFormattedCode = "uk"
-        val givenLanguageMapping = givenLanguageMapping()
-
-        // When
-        val resultFilePath = mappingRepository.validateFilePath(
-            givenFilePathWithThreeLettersPattern,
-            givenLanguageInfo,
-            givenFormattedCode,
-            givenLanguageMapping
-        )
-
-        // Then Three letters pattern
-        assertThat(resultFilePath, equalTo(expectedPath))
-    }
-
     private fun givenMappingRepository(): MappingRepository {
-        val repository = MappingRepository(
-            mockDistributionApi,
-            mockReader,
-            mockDataManager,
-            "hash",
-            "en"
-        )
+        val repository =
+            MappingRepository(
+                mockDistributionApi,
+                mockReader,
+                mockDataManager,
+                "hash",
+                "en",
+            )
         repository.crowdinApi = mockCrowdinApi
         return repository
     }
 
-    private fun givenMockResponse(success: Boolean = true, successCode: Int = 200) {
+    private fun givenMockResponse(
+        success: Boolean = true,
+        successCode: Int = 200,
+    ) {
+        @Suppress("UNCHECKED_CAST")
         val mockedCall = mock(Call::class.java) as Call<ResponseBody>
         `when`(mockDistributionApi.getMappingFile(any(), any(), any())).thenReturn(mockedCall)
 
-        val response = if (success) {
-            Response.success<ResponseBody>(successCode, StubResponseBody())
-        } else {
-            Response.error(403, StubResponseBody())
-        }
+        val response =
+            if (success) {
+                Response.success<ResponseBody>(successCode, StubResponseBody())
+            } else {
+                Response.error(403, StubResponseBody())
+            }
         `when`(mockedCall.execute()).thenReturn(response)
     }
 
     private fun givenMockLanguageResponse() {
+        @Suppress("UNCHECKED_CAST")
         val mockedCall = mock(Call::class.java) as Call<LanguageInfoData>
-        val response = Response.success(
-            200,
-            LanguageInfoData(givenLanguageInfo())
-        )
+        val response =
+            Response.success(
+                200,
+                LanguageInfoData(givenLanguageInfo()),
+            )
         `when`(mockedCall.execute()).thenReturn(response)
     }
 
     private fun givenSupportedLanguages(): LanguagesInfo {
         val languageInfo = LanguageInfo("en", "name", "qq", "www", "en-US", "en-rUS")
         return LanguagesInfo(
-            mutableListOf(LanguageInfoData(languageInfo))
+            mutableListOf(LanguageInfoData(languageInfo)),
         )
     }
 
-    private fun givenLanguageInfo(): LanguageInfo =
-        LanguageInfo("en", "English", "en", "eng", "en-US", "en-rUS")
-
-    private fun givenLanguageMapping(): Map<String, Map<String, String>> =
-        hashMapOf(
-            Pair(
-                "uk", hashMapOf(
-                    Pair("two_letters_code", "ua"),
-                    Pair("three_letters_code", "ukr"),
-                    Pair("name", "ukrainian")
-                )
-            )
-        )
+    private fun givenLanguageInfo(): LanguageInfo = LanguageInfo("en", "English", "en", "eng", "en-US", "en-rUS")
 }

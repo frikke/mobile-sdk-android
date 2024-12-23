@@ -9,14 +9,13 @@ import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import retrofit2.Call
 import retrofit2.Response
 
 class SessionTest {
-
     private lateinit var session: Session
     private lateinit var mockCallResponse: Call<AuthResponse>
     private lateinit var mockAuthConfig: AuthConfig
@@ -78,7 +77,7 @@ class SessionTest {
         `when`(mockDataManager.getRefreshToken()).thenReturn(null)
 
         // When
-        val result = session.refreshToken(mockAuthConfig)
+        val result = session.refreshToken(null, mockAuthConfig)
 
         // Then
         assertThat(result, `is`(false))
@@ -94,7 +93,7 @@ class SessionTest {
         `when`(mockCallResponse.execute()).thenReturn(Response.success(provideAuthResponse()))
 
         // When
-        session.refreshToken(mockAuthConfig)
+        session.refreshToken(null, mockAuthConfig)
 
         // Then
         verify(mockDataManager).getRefreshToken()
@@ -112,7 +111,7 @@ class SessionTest {
         val expectedAuthInfo = AuthInfo(authResponse)
 
         // When
-        val result = session.refreshToken(mockAuthConfig)
+        val result = session.refreshToken(null, mockAuthConfig)
 
         // Then
         assertThat(result, `is`(true))
@@ -128,12 +127,11 @@ class SessionTest {
         verify(mockDataManager).saveData(eq("auth_info"), eq(null))
     }
 
-    private fun provideAuthResponse(): AuthResponse {
-        return AuthResponse(
+    private fun provideAuthResponse(): AuthResponse =
+        AuthResponse(
             "token",
             11,
             "access_token",
-            "refresh_token"
+            "refresh_token",
         )
-    }
 }

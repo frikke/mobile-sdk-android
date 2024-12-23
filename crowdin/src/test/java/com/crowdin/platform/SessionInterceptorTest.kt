@@ -11,13 +11,12 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.ArgumentMatchers.anyString
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 
 class SessionInterceptorTest {
-
     @Before
     fun setUp() {
         initCrowdin()
@@ -49,7 +48,7 @@ class SessionInterceptorTest {
         sessionInterceptor.intercept(chain)
 
         // Then
-        verify(session).refreshToken(any())
+        verify(session).refreshToken(any(), any())
     }
 
     @Test
@@ -57,7 +56,7 @@ class SessionInterceptorTest {
         // Given
         val session = givenMockSession()
         `when`(session.isTokenExpired()).thenReturn(true)
-        `when`(session.refreshToken(any())).thenReturn(false)
+        `when`(session.refreshToken(any(), any())).thenReturn(false)
         val sessionInterceptor = SessionInterceptor(session)
         val chain = givenMockChain()
 
@@ -74,7 +73,7 @@ class SessionInterceptorTest {
         initCrowdin()
         val session = givenMockSession()
         `when`(session.isTokenExpired()).thenReturn(false)
-        `when`(session.refreshToken(any())).thenReturn(false)
+        `when`(session.refreshToken(any(), any())).thenReturn(false)
         val sessionInterceptor = SessionInterceptor(session)
         val chain = givenMockChain()
         givenFailResponse(chain)
@@ -83,7 +82,7 @@ class SessionInterceptorTest {
         sessionInterceptor.intercept(chain)
 
         // Then
-        verify(session).refreshToken(any())
+        verify(session).refreshToken(any(), any())
     }
 
     @Test
@@ -92,7 +91,7 @@ class SessionInterceptorTest {
         initCrowdin()
         val session = givenMockSession()
         `when`(session.isTokenExpired()).thenReturn(false)
-        `when`(session.refreshToken(any())).thenReturn(false)
+        `when`(session.refreshToken(any(), any())).thenReturn(false)
         val sessionInterceptor = SessionInterceptor(session)
         val chain = givenMockChain()
         givenFailResponse(chain)
@@ -110,7 +109,7 @@ class SessionInterceptorTest {
         initCrowdin()
         val session = givenMockSession()
         `when`(session.isTokenExpired()).thenReturn(false)
-        `when`(session.refreshToken(any())).thenReturn(true)
+        `when`(session.refreshToken(any(), any())).thenReturn(true)
         val sessionInterceptor = SessionInterceptor(session)
         val chain = givenMockChain()
         givenFailResponse(chain)
@@ -123,15 +122,17 @@ class SessionInterceptorTest {
     }
 
     private fun initCrowdin() {
-        val config = CrowdinConfig.Builder()
-            .withDistributionHash("test")
-            .build()
+        val config =
+            CrowdinConfig
+                .Builder()
+                .withDistributionHash("test")
+                .build()
         val sharedPrefs = mock(SharedPreferences::class.java)!!
         val context = mock(Context::class.java)
         `when`(context.getSharedPreferences(anyString(), anyInt())).thenReturn(sharedPrefs)
         val connectivityManager = mock(ConnectivityManager::class.java)
         `when`(context.getSystemService(Context.CONNECTIVITY_SERVICE)).thenReturn(
-            connectivityManager
+            connectivityManager,
         )
 
         Crowdin.init(context, config)

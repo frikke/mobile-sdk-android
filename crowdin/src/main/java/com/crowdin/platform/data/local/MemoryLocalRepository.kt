@@ -15,7 +15,6 @@ import java.util.Locale
  * A LocalRepository which keeps the stringsData ONLY in memory.
  */
 internal class MemoryLocalRepository : LocalRepository {
-
     private val stringsData = LinkedHashMap<String, LanguageData>()
     private val generalData = mutableMapOf<String, Any?>()
 
@@ -26,22 +25,33 @@ internal class MemoryLocalRepository : LocalRepository {
         }
     }
 
-    override fun setString(language: String, key: String, value: String) {
+    override fun setString(
+        language: String,
+        key: String,
+        value: String,
+    ) {
         val newStringData = StringData(key, value)
         saveStringData(language, newStringData)
     }
 
-    override fun setStringData(language: String, stringData: StringData) {
+    override fun setStringData(
+        language: String,
+        stringData: StringData,
+    ) {
         saveStringData(language, stringData)
     }
 
-    override fun setArrayData(language: String, arrayData: ArrayData) {
+    override fun setArrayData(
+        language: String,
+        arrayData: ArrayData,
+    ) {
         when (val data = stringsData[language]) {
             null -> {
                 val languageData = LanguageData(language)
                 languageData.arrays.add(arrayData)
                 stringsData[language] = languageData
             }
+
             else -> {
                 var index = -1
                 data.arrays.forEachIndexed { position, array ->
@@ -58,13 +68,17 @@ internal class MemoryLocalRepository : LocalRepository {
         }
     }
 
-    override fun setPluralData(language: String, pluralData: PluralData) {
+    override fun setPluralData(
+        language: String,
+        pluralData: PluralData,
+    ) {
         when (val data = stringsData[language]) {
             null -> {
                 val languageData = LanguageData(language)
                 languageData.plurals.add(pluralData)
                 stringsData[language] = languageData
             }
+
             else -> {
                 var isExist = false
                 data.plurals.forEach { plural ->
@@ -80,7 +94,10 @@ internal class MemoryLocalRepository : LocalRepository {
         }
     }
 
-    override fun getString(language: String, key: String): String? {
+    override fun getString(
+        language: String,
+        key: String,
+    ): String? {
         val languageData = stringsData[language] ?: return null
         languageData.resources.forEach {
             if (it.stringKey == key) {
@@ -105,7 +122,10 @@ internal class MemoryLocalRepository : LocalRepository {
         return null
     }
 
-    override fun getStringPlural(resourceKey: String, quantityKey: String): String? {
+    override fun getStringPlural(
+        resourceKey: String,
+        quantityKey: String,
+    ): String? {
         stringsData[Locale.getDefault().getFormattedCode()]?.plurals?.forEach { pluralData ->
             if (pluralData.name == resourceKey) {
                 return pluralData.quantity[quantityKey]
@@ -114,9 +134,7 @@ internal class MemoryLocalRepository : LocalRepository {
         return null
     }
 
-    override fun isExist(language: String): Boolean {
-        return stringsData[language] != null
-    }
+    override fun isExist(language: String): Boolean = stringsData[language] != null
 
     override fun containsKey(key: String): Boolean {
         stringsData[Locale.getDefault().getFormattedCode()]?.let { languageData ->
@@ -153,16 +171,22 @@ internal class MemoryLocalRepository : LocalRepository {
         return textMetaData
     }
 
-    override fun saveData(type: String, data: Any?) {
+    override fun saveData(
+        type: String,
+        data: Any?,
+    ) {
         generalData[type] = data
     }
 
-    override fun <T> getData(type: String, classType: Type): T? = generalData[type] as T
+    override fun <T> getData(
+        type: String,
+        classType: Type,
+    ): T? = generalData[type] as T
 
     private fun searchInResources(
         languageData: LanguageData?,
         text: String,
-        searchResultData: TextMetaData
+        searchResultData: TextMetaData,
     ) {
         searchInStrings(languageData, text, searchResultData)
         searchInArrays(languageData, text, searchResultData)
@@ -172,17 +196,21 @@ internal class MemoryLocalRepository : LocalRepository {
     private fun searchInPlurals(
         languageData: LanguageData?,
         text: String,
-        searchResultData: TextMetaData
+        searchResultData: TextMetaData,
     ) {
         languageData?.plurals?.forEach { pluralData ->
             val pluralName = pluralData.name
             pluralData.quantity.forEach {
                 try {
                     if (it.value == text ||
-                        (pluralData.formatArgs.isNotEmpty() && it.value == String.format(
-                            text,
-                            pluralData.formatArgs
-                        ))
+                        (
+                            pluralData.formatArgs.isNotEmpty() &&
+                                it.value ==
+                                String.format(
+                                    text,
+                                    pluralData.formatArgs,
+                                )
+                        )
                     ) {
                         searchResultData.pluralName = pluralName
                         searchResultData.pluralQuantity = pluralData.number
@@ -199,7 +227,7 @@ internal class MemoryLocalRepository : LocalRepository {
     private fun searchInArrays(
         languageData: LanguageData?,
         text: String,
-        textMetaData: TextMetaData
+        textMetaData: TextMetaData,
     ) {
         languageData?.arrays?.forEach { arrayData ->
             val arrayName = arrayData.name
@@ -216,7 +244,7 @@ internal class MemoryLocalRepository : LocalRepository {
     private fun searchInStrings(
         languageData: LanguageData?,
         text: String,
-        textMetaData: TextMetaData
+        textMetaData: TextMetaData,
     ) {
         languageData?.resources?.forEach {
             if (it.stringValue == text) {
@@ -230,7 +258,7 @@ internal class MemoryLocalRepository : LocalRepository {
 
     private fun getMatch(
         resources: MutableList<StringData>,
-        newStringData: StringData
+        newStringData: StringData,
     ): StringData? {
         resources.forEach {
             if (it.stringKey == newStringData.stringKey) {
@@ -240,13 +268,17 @@ internal class MemoryLocalRepository : LocalRepository {
         return null
     }
 
-    private fun saveStringData(language: String, newStringData: StringData) {
+    private fun saveStringData(
+        language: String,
+        newStringData: StringData,
+    ) {
         when (val data = stringsData[language]) {
             null -> {
                 val languageData = LanguageData(language)
                 languageData.resources.add(newStringData)
                 stringsData[language] = languageData
             }
+
             else -> {
                 val stringData = getMatch(data.resources, newStringData)
                 if (stringData == null) {

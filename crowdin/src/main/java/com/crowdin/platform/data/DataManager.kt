@@ -7,7 +7,6 @@ import com.crowdin.platform.Crowdin.CROWDIN_TAG
 import com.crowdin.platform.LoadingStateListener
 import com.crowdin.platform.LocalDataChangeObserver
 import com.crowdin.platform.Preferences
-import com.crowdin.platform.ResourcesCallback
 import com.crowdin.platform.data.local.LocalRepository
 import com.crowdin.platform.data.model.ArrayData
 import com.crowdin.platform.data.model.AuthInfo
@@ -25,15 +24,13 @@ import com.crowdin.platform.util.ThreadUtils
 import com.crowdin.platform.util.getFormattedCode
 import java.lang.reflect.Type
 import java.util.Locale
-import kotlin.collections.ArrayList
 
 internal class DataManager(
     private val remoteRepository: RemoteRepository,
     private val localRepository: LocalRepository,
     private val crowdinPreferences: Preferences,
-    private val dataChangeObserver: LocalDataChangeObserver
+    private val dataChangeObserver: LocalDataChangeObserver,
 ) : TextMetaDataProvider {
-
     companion object {
         private const val STATUS_OK = "ok"
         const val SUF_COPY = "-copy"
@@ -43,57 +40,69 @@ internal class DataManager(
         const val MAPPING_SUF = "-mapping"
         const val SUPPORTED_LANGUAGES = "supported_languages"
         const val MANIFEST_DATA = "manifest_data"
+        const val SYNC_DATA = "sync_data"
     }
 
     private var loadingStateListeners: ArrayList<LoadingStateListener>? = null
 
     override fun provideTextMetaData(text: String): TextMetaData = localRepository.getTextData(text)
 
-    fun getLanguageData(language: String): LanguageData? =
-        localRepository.getLanguageData(language)
+    fun getLanguageData(language: String): LanguageData? = localRepository.getLanguageData(language)
 
-    fun getString(language: String, stringKey: String): String? =
-        localRepository.getString(language, stringKey)
+    fun getString(
+        language: String,
+        stringKey: String,
+    ): String? = localRepository.getString(language, stringKey)
 
-    fun setString(language: String, key: String, value: String) {
+    fun setString(
+        language: String,
+        key: String,
+        value: String,
+    ) {
         localRepository.setString(language, key, value)
     }
 
     fun getStringArray(key: String): Array<String>? = localRepository.getStringArray(key)
 
-    fun getStringPlural(resourceKey: String, quantityKey: String): String? =
-        localRepository.getStringPlural(resourceKey, quantityKey)
+    fun getStringPlural(
+        resourceKey: String,
+        quantityKey: String,
+    ): String? = localRepository.getStringPlural(resourceKey, quantityKey)
 
-    fun updateData(context: Context, networkType: NetworkType, onFinished: (() -> Unit)? = null) {
+    fun updateData(
+        context: Context,
+        networkType: NetworkType,
+        onFinished: (() -> Unit)? = null,
+    ) {
         ThreadUtils.runInBackgroundPool({
             val languageInfo = getSupportedLanguages()
             val status = validateData(context, networkType)
             if (status == STATUS_OK) {
-
                 Log.v(CROWDIN_TAG, "Update data from Api started")
 
                 remoteRepository.fetchData(
                     supportedLanguages = languageInfo,
-                    languageDataCallback = object : LanguageDataCallback {
-
-                        override fun onDataLoaded(languageData: LanguageData) {
-                            Log.v(CROWDIN_TAG, "Update data from Api finished")
-
-                            refreshData(languageData)
-                            ThreadUtils.executeOnMain {
-                                onFinished?.invoke()
+                    languageDataCallback =
+                        object : LanguageDataCallback {
+                            override fun onDataLoaded(languageData: LanguageData) {
+                                Log.v(CROWDIN_TAG, "Update data from Api finished")
+                                crowdinPreferences.setLastUpdate(System.currentTimeMillis())
+                                refreshData(languageData)
+                                ThreadUtils.executeOnMain {
+                                    onFinished?.invoke()
+                                }
                             }
-                        }
 
-                        override fun onFailure(throwable: Throwable) {
-                            Log.e(CROWDIN_TAG, "Update data from Api failed. ${throwable.message}")
+                            override fun onFailure(throwable: Throwable) {
+                                Log.e(CROWDIN_TAG, "Update data from Api failed. ${throwable.message}")
 
-                            sendOnFailure(throwable)
-                            ThreadUtils.executeOnMain {
-                                onFinished?.invoke()
+                                sendOnFailure(throwable)
+                                ThreadUtils.executeOnMain {
+                                    onFinished?.invoke()
+                                }
                             }
-                        }
-                    })
+                        },
+                )
             } else {
                 sendOnFailure(Throwable(status))
                 ThreadUtils.executeOnMain {
@@ -112,12 +121,15 @@ internal class DataManager(
         sendOnDataChanged()
     }
 
-    private fun validateData(context: Context, networkType: NetworkType): String {
+    private fun validateData(
+        context: Context,
+        networkType: NetworkType,
+    ): String {
         var status: String = STATUS_OK
         when {
             !Connectivity.isOnline(context) -> status = "No internet connection"
-            !Connectivity.isNetworkAllowed(context, networkType) -> status =
-                "Not allowed to load with current network type: ${networkType.name}"
+            !Connectivity.isNetworkAllowed(context, networkType) ->
+                status = "Not allowed to load with current network type: ${networkType.name}"
         }
 
         return status
@@ -126,7 +138,7 @@ internal class DataManager(
     fun saveReserveResources(
         stringData: StringData? = null,
         arrayData: ArrayData? = null,
-        pluralData: PluralData? = null
+        pluralData: PluralData? = null,
     ) {
         if (FeatureFlags.isRealTimeUpdateEnabled || FeatureFlags.isScreenshotEnabled) {
             when {
@@ -134,23 +146,25 @@ internal class DataManager(
                     if (localRepository.containsKey(stringData.stringKey)) {
                         localRepository.setStringData(
                             Locale.getDefault().getFormattedCode() + SUF_COPY,
-                            stringData
+                            stringData,
                         )
                     }
                 }
+
                 arrayData != null -> {
                     if (localRepository.containsKey(arrayData.name)) {
                         localRepository.setArrayData(
                             Locale.getDefault().getFormattedCode() + SUF_COPY,
-                            arrayData
+                            arrayData,
                         )
                     }
                 }
+
                 pluralData != null -> {
                     if (localRepository.containsKey(pluralData.name)) {
                         localRepository.setPluralData(
                             Locale.getDefault().getFormattedCode() + SUF_COPY,
-                            pluralData
+                            pluralData,
                         )
                     }
                 }
@@ -166,8 +180,7 @@ internal class DataManager(
         loadingStateListeners?.add(listener)
     }
 
-    fun removeLoadingStateListener(listener: LoadingStateListener): Boolean =
-        loadingStateListeners?.remove(listener) ?: false
+    fun removeLoadingStateListener(listener: LoadingStateListener): Boolean = loadingStateListeners?.remove(listener) ?: false
 
     private fun sendOnFailure(throwable: Throwable) {
         loadingStateListeners?.let { listeners ->
@@ -194,39 +207,40 @@ internal class DataManager(
         localRepository.saveLanguageData(languageData)
     }
 
-    fun getMapping(sourceLanguage: String): LanguageData? =
-        localRepository.getLanguageData(sourceLanguage + MAPPING_SUF)
+    fun getMapping(sourceLanguage: String): LanguageData? = localRepository.getLanguageData(sourceLanguage + MAPPING_SUF)
 
     @WorkerThread
     fun getManifest(): ManifestData? {
         var manifest: ManifestData? = getData(MANIFEST_DATA, ManifestData::class.java)
         if (manifest == null) {
-            remoteRepository.getManifest({
+            remoteRepository.getManifest {
                 saveData(MANIFEST_DATA, it)
                 manifest = it
-            })
+            }
         }
 
         return manifest
     }
 
-    fun saveData(type: String, data: Any?) {
+    fun saveData(
+        type: String,
+        data: Any?,
+    ) {
         localRepository.saveData(type, data)
     }
 
-    fun <T> getData(type: String, classType: Type): T? = localRepository.getData(type, classType)
+    fun <T> getData(
+        type: String,
+        classType: Type,
+    ): T? = localRepository.getData(type, classType)
 
-    fun isAuthorized(): Boolean =
-        (getData(AUTH_INFO, AuthInfo::class.java) as AuthInfo?) != null
+    fun isAuthorized(): Boolean = (getData(AUTH_INFO, AuthInfo::class.java) as AuthInfo?) != null
 
-    fun isTokenExpired(): Boolean =
-        (getData(AUTH_INFO, AuthInfo::class.java) as AuthInfo?)?.isExpired() ?: true
+    fun isTokenExpired(): Boolean = (getData(AUTH_INFO, AuthInfo::class.java) as AuthInfo?)?.isExpired() ?: true
 
-    fun getAccessToken(): String? =
-        (getData(AUTH_INFO, AuthInfo::class.java) as AuthInfo?)?.accessToken
+    fun getAccessToken(): String? = (getData(AUTH_INFO, AuthInfo::class.java) as AuthInfo?)?.accessToken
 
-    fun getRefreshToken(): String? =
-        (getData(AUTH_INFO, AuthInfo::class.java) as AuthInfo?)?.refreshToken
+    fun getRefreshToken(): String? = (getData(AUTH_INFO, AuthInfo::class.java) as AuthInfo?)?.refreshToken
 
     fun saveDistributionHash(distributionHash: String) {
         crowdinPreferences.setString(DISTRIBUTION_HASH, distributionHash)
@@ -236,25 +250,6 @@ internal class DataManager(
 
     fun invalidateAuthData() {
         saveData(AUTH_INFO, null)
-    }
-
-    fun getResourcesByLocale(languageCode: String, callback: ResourcesCallback) {
-        ThreadUtils.runInBackgroundPool({
-            val languageInfo = getSupportedLanguages()
-            remoteRepository.fetchData(
-                languageCode,
-                languageInfo,
-                languageDataCallback = object : LanguageDataCallback {
-
-                    override fun onDataLoaded(languageData: LanguageData) {
-                        ThreadUtils.executeOnMain { callback.onDataReceived(languageData.toString()) }
-                    }
-
-                    override fun onFailure(throwable: Throwable) {
-                        ThreadUtils.executeOnMain { sendOnFailure(throwable) }
-                    }
-                })
-        }, true)
     }
 
     @WorkerThread

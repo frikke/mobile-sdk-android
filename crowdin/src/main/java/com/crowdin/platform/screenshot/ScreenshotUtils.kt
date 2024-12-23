@@ -9,9 +9,12 @@ import android.view.PixelCopy
 import android.view.View
 
 object ScreenshotUtils {
-
     @JvmStatic
-    fun getBitmapFromView(view: View, activity: Activity, callback: (Bitmap) -> Unit) {
+    fun getBitmapFromView(
+        view: View,
+        activity: Activity,
+        callback: (Bitmap) -> Unit,
+    ) {
         val root = view.rootView
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             activity.window?.let { window ->
@@ -20,18 +23,20 @@ object ScreenshotUtils {
                 root.getLocationInWindow(locationOfViewInWindow)
                 try {
                     PixelCopy.request(
-                        window, Rect(
+                        window,
+                        Rect(
                             locationOfViewInWindow[0],
                             locationOfViewInWindow[1],
                             locationOfViewInWindow[0] + root.width,
-                            locationOfViewInWindow[1] + root.height
+                            locationOfViewInWindow[1] + root.height,
                         ),
                         bitmap,
                         { copyResult ->
                             if (copyResult == PixelCopy.SUCCESS) {
                                 callback(bitmap)
                             }
-                        }, Handler()
+                        },
+                        Handler(),
                     )
                 } catch (e: IllegalArgumentException) {
                     callback(takeScreenshot(root))

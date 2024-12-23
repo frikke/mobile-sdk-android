@@ -11,28 +11,37 @@ import retrofit2.Response
 
 internal class SessionImpl(
     private val dataManager: DataManager,
-    private val authApi: AuthApi
+    private val authApi: AuthApi,
 ) : Session {
-
     override fun isAuthorized(): Boolean = dataManager.isAuthorized()
 
     override fun isTokenExpired(): Boolean = dataManager.isTokenExpired()
 
     override fun getAccessToken(): String? = dataManager.getAccessToken()
 
-    override fun refreshToken(authConfig: AuthConfig?): Boolean {
+    override fun refreshToken(
+        organizationName: String?,
+        authConfig: AuthConfig?,
+    ): Boolean {
         val refreshToken = dataManager.getRefreshToken()
         refreshToken ?: return false
 
         val clientId = authConfig?.clientId ?: ""
         val clientSecret = authConfig?.clientSecret ?: ""
-        val domain = authConfig?.organizationName
 
         var response: Response<AuthResponse>? = null
         executeIO {
-            response = authApi.getToken(
-                RefreshToken("refresh_token", clientId, clientSecret, refreshToken), domain
-            ).execute()
+            response =
+                authApi
+                    .getToken(
+                        RefreshToken(
+                            "refresh_token",
+                            clientId,
+                            clientSecret,
+                            refreshToken,
+                        ),
+                        organizationName,
+                    ).execute()
         }
 
         val authResponse = response?.body()

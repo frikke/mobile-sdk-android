@@ -1,12 +1,10 @@
 package com.crowdin.platform
 
 import com.crowdin.platform.data.model.AuthConfig
-import com.crowdin.platform.recurringwork.RecurringManager
 import org.junit.Assert
 import org.junit.Test
 
 class CrowdinConfigTest {
-
     @Test
     fun whenDistributionHashEmpty_shouldThrowException() {
         // Given
@@ -14,7 +12,8 @@ class CrowdinConfigTest {
 
         // When
         try {
-            CrowdinConfig.Builder()
+            CrowdinConfig
+                .Builder()
                 .withDistributionHash(distributionHash)
                 .build()
             Assert.fail("SDK initialization with empty `distribution hash` not valid.")
@@ -31,7 +30,8 @@ class CrowdinConfigTest {
 
         // When
         try {
-            CrowdinConfig.Builder()
+            CrowdinConfig
+                .Builder()
                 .withDistributionHash("distributionHash")
                 .withRealTimeUpdates()
                 .withSourceLanguage(sourceLanguage)
@@ -50,7 +50,8 @@ class CrowdinConfigTest {
 
         // When
         try {
-            CrowdinConfig.Builder()
+            CrowdinConfig
+                .Builder()
                 .withDistributionHash("distributionHash")
                 .withScreenshotEnabled()
                 .withSourceLanguage(sourceLanguage)
@@ -69,7 +70,8 @@ class CrowdinConfigTest {
 
         // When
         try {
-            CrowdinConfig.Builder()
+            CrowdinConfig
+                .Builder()
                 .withDistributionHash("distributionHash")
                 .withAuthConfig(authConfig)
                 .build()
@@ -86,13 +88,15 @@ class CrowdinConfigTest {
         val smallInterval = 10 * 60L
 
         // When
-        val configWithSmallInterval = CrowdinConfig.Builder()
-            .withDistributionHash("distributionHash")
-            .withUpdateInterval(smallInterval)
-            .build()
+        val configWithSmallInterval =
+            CrowdinConfig
+                .Builder()
+                .withDistributionHash("distributionHash")
+                .withUpdateInterval(smallInterval)
+                .build()
 
         // Then
-        Assert.assertTrue(configWithSmallInterval.updateInterval == RecurringManager.MIN_PERIODIC_INTERVAL_MILLIS)
+        Assert.assertTrue(configWithSmallInterval.updateInterval == 15 * 60 * 1000L)
     }
 
     @Test
@@ -101,10 +105,12 @@ class CrowdinConfigTest {
         val bigInterval = 20 * 60L
 
         // When
-        val configWithBigInterval = CrowdinConfig.Builder()
-            .withDistributionHash("distributionHash")
-            .withUpdateInterval(bigInterval)
-            .build()
+        val configWithBigInterval =
+            CrowdinConfig
+                .Builder()
+                .withDistributionHash("distributionHash")
+                .withUpdateInterval(bigInterval)
+                .build()
 
         // Then
         Assert.assertTrue(configWithBigInterval.updateInterval == bigInterval * 1000)
@@ -113,10 +119,12 @@ class CrowdinConfigTest {
     @Test
     fun whenAuthConfigWithRequestAuthDialog_shouldBeTrueRequestAuthDialog() {
         // When
-        val config = CrowdinConfig.Builder()
-            .withDistributionHash("distributionHash")
-            .withAuthConfig(AuthConfig("clientId", "cliendSecret", requestAuthDialog = true))
-            .build()
+        val config =
+            CrowdinConfig
+                .Builder()
+                .withDistributionHash("distributionHash")
+                .withAuthConfig(AuthConfig("clientId", "cliendSecret", requestAuthDialog = true))
+                .build()
 
         // Then
         Assert.assertTrue(config.authConfig?.requestAuthDialog == true)
@@ -125,10 +133,12 @@ class CrowdinConfigTest {
     @Test
     fun whenAuthConfigWithRequestAuthDialog_shouldBeFalseRequestAuthDialog() {
         // When
-        val config = CrowdinConfig.Builder()
-            .withDistributionHash("distributionHash")
-            .withAuthConfig(AuthConfig("clientId", "cliendSecret", requestAuthDialog = false))
-            .build()
+        val config =
+            CrowdinConfig
+                .Builder()
+                .withDistributionHash("distributionHash")
+                .withAuthConfig(AuthConfig("clientId", "cliendSecret", requestAuthDialog = false))
+                .build()
 
         // Then
         Assert.assertTrue(config.authConfig?.requestAuthDialog == false)
@@ -137,9 +147,11 @@ class CrowdinConfigTest {
     @Test
     fun whenEmptyAuthConfig_shouldBeTrueRequestAuthDialog() {
         // When
-        val config = CrowdinConfig.Builder()
-            .withDistributionHash("distributionHash")
-            .build()
+        val config =
+            CrowdinConfig
+                .Builder()
+                .withDistributionHash("distributionHash")
+                .build()
 
         // Then
 
@@ -151,12 +163,28 @@ class CrowdinConfigTest {
     @Test
     fun whenAuthConfigWithoutRequestAuthDialog_shouldBeTrueRequestAuthDialog() {
         // When
-        val config = CrowdinConfig.Builder()
-            .withDistributionHash("distributionHash")
-            .withAuthConfig(AuthConfig("clientId", "cliendSecret"))
-            .build()
+        val config =
+            CrowdinConfig
+                .Builder()
+                .withDistributionHash("distributionHash")
+                .withAuthConfig(AuthConfig("clientId", "cliendSecret"))
+                .build()
 
         // Then
         Assert.assertTrue(config.authConfig?.requestAuthDialog == true)
+    }
+
+    @Test
+    fun whenInitSyncDisabled_isInitSyncEnabledShouldBeFalse() {
+        // When
+        val config =
+            CrowdinConfig
+                .Builder()
+                .withDistributionHash("distributionHash")
+                .withInitSyncDisabled()
+                .build()
+
+        // Then
+        Assert.assertTrue(config.isInitSyncEnabled == false)
     }
 }

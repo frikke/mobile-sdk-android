@@ -8,28 +8,24 @@ internal class SubscribeUpdateEvent(
     private var projectId: String,
     private var userId: String,
     private var language: String,
-    private var mappingId: String
+    private var mappingId: String,
 ) {
-
-    override fun toString(): String {
-        return "{" +
-                "\"action\":\"subscribe\", " +
-                "\"event\": \"$UPDATE_DRAFT:$wsHash:$projectId:$userId:$language:$mappingId\"" +
-                "}"
-    }
+    override fun toString(): String =
+        "{" +
+            "\"action\":\"subscribe\", " +
+            "\"event\": \"$UPDATE_DRAFT:$wsHash:$projectId:$userId:$language:$mappingId\"" +
+            "}"
 }
 
 internal class SubscribeSuggestionEvent(
     private var wsHash: String,
     private var projectId: String,
     private var language: String,
-    private var mappingId: String
+    private var mappingId: String,
 ) {
-
-    override fun toString(): String {
-        return "{" +
-                "\"action\":\"subscribe\", " +
-                "\"event\": \"$TOP_SUGGESTION:$wsHash:$projectId:$language:$mappingId\"" +
-                "}"
-    }
+    override fun toString(): String =
+        "{" +
+            "\"action\":\"subscribe\", " +
+            "\"event\": \"$TOP_SUGGESTION:$wsHash:$projectId:$language:$mappingId\"" +
+            "}"
 }

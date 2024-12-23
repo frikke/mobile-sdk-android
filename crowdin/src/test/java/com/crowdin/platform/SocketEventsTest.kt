@@ -7,7 +7,6 @@ import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
 
 class SocketEventsTest {
-
     @Test
     fun updateEventTest() {
         val wsHash = "wsHash"
@@ -15,7 +14,8 @@ class SocketEventsTest {
         val userId = "userId"
         val language = "EN"
         val mappingId = "mappingId"
-        val expected = "{" +
+        val expected =
+            "{" +
                 "\"action\":\"subscribe\", " +
                 "\"event\": \"update-draft:$wsHash:$projectId:$userId:$language:$mappingId\"" +
                 "}"
@@ -31,7 +31,8 @@ class SocketEventsTest {
         val projectId = "projectId"
         val language = "EN"
         val mappingId = "mappingId"
-        val expected = "{" +
+        val expected =
+            "{" +
                 "\"action\":\"subscribe\", " +
                 "\"event\": \"top-suggestion:$wsHash:$projectId:$language:$mappingId\"" +
                 "}"

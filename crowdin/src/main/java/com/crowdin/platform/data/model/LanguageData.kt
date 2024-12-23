@@ -2,8 +2,9 @@ package com.crowdin.platform.data.model
 
 import com.crowdin.platform.util.convertToJson
 
-internal class LanguageData(var language: String) {
-
+internal class LanguageData(
+    var language: String,
+) {
     constructor() : this("")
 
     var resources: MutableList<StringData> = mutableListOf()
@@ -11,11 +12,9 @@ internal class LanguageData(var language: String) {
     var plurals: MutableList<PluralData> = mutableListOf()
 
     fun updateResources(languageData: LanguageData) {
-        when {
-            languageData.resources.isNotEmpty() -> resources = languageData.resources
-            languageData.arrays.isNotEmpty() -> arrays = languageData.arrays
-            languageData.plurals.isNotEmpty() -> plurals = languageData.plurals
-        }
+        if (languageData.resources.isNotEmpty()) resources = languageData.resources
+        if (languageData.arrays.isNotEmpty()) arrays = languageData.arrays
+        if (languageData.plurals.isNotEmpty()) plurals = languageData.plurals
     }
 
     fun addNewResources(languageData: LanguageData) {
@@ -24,7 +23,5 @@ internal class LanguageData(var language: String) {
         plurals.addAll(languageData.plurals)
     }
 
-    override fun toString(): String {
-        return convertToJson(this)
-    }
+    override fun toString(): String = convertToJson(this)
 }

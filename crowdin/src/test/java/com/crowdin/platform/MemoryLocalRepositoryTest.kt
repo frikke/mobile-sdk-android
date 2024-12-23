@@ -8,14 +8,13 @@ import com.crowdin.platform.data.model.LanguageData
 import com.crowdin.platform.data.model.PluralData
 import com.crowdin.platform.data.model.StringData
 import com.crowdin.platform.util.getFormattedCode
-import java.util.Locale
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.CoreMatchers.nullValue
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
+import java.util.Locale
 
 class MemoryLocalRepositoryTest {
-
     @Test
     fun whenGetSavedLanguageData_shouldReturnSameData() {
         // Given
@@ -217,11 +216,15 @@ class MemoryLocalRepositoryTest {
     fun saveDataTest() {
         // Given
         val memoryLocalRepository = MemoryLocalRepository()
-        val expectedAuthInfo = AuthInfo(
-            AuthResponse(
-                "", 0, "", ""
+        val expectedAuthInfo =
+            AuthInfo(
+                AuthResponse(
+                    tokenType = "",
+                    expiresIn = 0,
+                    accessToken = "",
+                    refreshToken = "",
+                ),
             )
-        )
 
         // When
         memoryLocalRepository.saveData("auth_info", expectedAuthInfo)
@@ -344,20 +347,23 @@ class MemoryLocalRepositoryTest {
 
     private fun givenLanguageData(locale: String): LanguageData {
         val languageData = LanguageData(locale)
-        val listOfStringData = mutableListOf(
-            StringData("String0", "string0"),
-            StringData("String1", "string1")
-        )
-        val listOfArrayData = mutableListOf(
-            ArrayData("Array0", arrayOf("array0:0", "array0:1")),
-            ArrayData("Array1", arrayOf("array1:0", "array1:1")),
-            ArrayData("Array2", arrayOf("array2:0", "array2:1"))
-        )
-        val listOfPluralData = mutableListOf(
-            PluralData("Plural0", mutableMapOf(Pair("pluralKey0", "pluralValue0")), 0),
-            PluralData("Plural1", mutableMapOf(Pair("pluralKey1", "pluralValue1")), 1),
-            PluralData("Plural2", mutableMapOf(Pair("pluralKey2", "pluralValue2")), 2)
-        )
+        val listOfStringData =
+            mutableListOf(
+                StringData("String0", "string0"),
+                StringData("String1", "string1"),
+            )
+        val listOfArrayData =
+            mutableListOf(
+                ArrayData("Array0", arrayOf("array0:0", "array0:1")),
+                ArrayData("Array1", arrayOf("array1:0", "array1:1")),
+                ArrayData("Array2", arrayOf("array2:0", "array2:1")),
+            )
+        val listOfPluralData =
+            mutableListOf(
+                PluralData("Plural0", mutableMapOf(Pair("pluralKey0", "pluralValue0")), 0),
+                PluralData("Plural1", mutableMapOf(Pair("pluralKey1", "pluralValue1")), 1),
+                PluralData("Plural2", mutableMapOf(Pair("pluralKey2", "pluralValue2")), 2),
+            )
         languageData.resources = listOfStringData
         languageData.arrays = listOfArrayData
         languageData.plurals = listOfPluralData

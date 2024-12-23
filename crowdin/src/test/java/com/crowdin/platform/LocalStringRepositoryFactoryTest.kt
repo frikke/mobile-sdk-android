@@ -10,18 +10,19 @@ import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.ArgumentMatchers.anyString
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 
 class LocalStringRepositoryFactoryTest {
-
     @Test
     fun whenCreateRepositoryWithDefaultConfig_shouldCreateSharedPrefRepository() {
         // Given
         val context = givenContext()
-        val config = CrowdinConfig.Builder()
-            .withDistributionHash("testHash")
-            .build()
+        val config =
+            CrowdinConfig
+                .Builder()
+                .withDistributionHash("testHash")
+                .build()
 
         // When
         val repository =
@@ -35,10 +36,12 @@ class LocalStringRepositoryFactoryTest {
     fun whenCreateRepositoryWithoutPersistence_shouldCreateMemoryRepository() {
         // Given
         val context = givenContext()
-        val config = CrowdinConfig.Builder()
-            .persist(false)
-            .withDistributionHash("testHash")
-            .build()
+        val config =
+            CrowdinConfig
+                .Builder()
+                .persist(false)
+                .withDistributionHash("testHash")
+                .build()
 
         // When
         val repository =
